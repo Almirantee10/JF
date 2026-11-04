@@ -1,6 +1,6 @@
 /* eslint-disable */
 // Regras de negócio, dados de demonstração e helpers — portados literalmente do protótipo original.
-export const NS='jf-agro-fin-v1',SESS='jf-agro-sess',BK='jf-agro-backups';
+export const NS='jf-agro-fin-v2',SESS='jf-agro-sess2',BK='jf-agro-backups2';
 export const MES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 export const MESF=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 export const pad=n=>String(n).padStart(2,'0');
@@ -56,6 +56,11 @@ export function syncCompra(d,c){d.lanc=d.lanc.filter(l=>l.ref!=='gc:'+c.id);if(c
 export function syncVenda(d,v){d.lanc=d.lanc.filter(l=>l.ref!=='gv:'+v.id);if(v.excluido)return;const b={data:v.data,atividade:'gado',pessoa:v.comprador,forma:v.forma||'Transferência',conta:v.conta||bankId(d),usuario:v.usuario,criadoEm:v.criadoEm,origem:'gado',ref:'gv:'+v.id};d.lanc.push(Object.assign({},b,{id:'l'+v.id,tipo:'entrada',categoria:'Venda de gado',descricao:'Venda de gado – '+v.qtd+' cab.',valor:v.valor}));if(+v.despesas>0)d.lanc.push(Object.assign({},b,{id:'l'+v.id+'d',tipo:'saida',categoria:'Frete e comissões',descricao:'Despesas da venda de gado',valor:+v.despesas}));}
 export function syncTit(d,x,P){const ref=(P?'cp:':'cr:')+x.id;d.lanc=d.lanc.filter(l=>l.ref!==ref);if(x.excluido||x.semLanc||x.status!==(P?'Pago':'Recebido'))return;d.lanc.push({id:'l'+x.id,ref,data:(P?x.pagoEm:x.recebidoEm)||TODAY,tipo:P?'saida':'entrada',atividade:x.atividade,categoria:x.categoria,descricao:x.descricao,pessoa:P?x.fornecedor:x.cliente,valor:x.valor,forma:x.forma||'PIX',conta:x.forma==='Dinheiro'?cxId(d):(x.conta||bankId(d)),usuario:x.usuario,criadoEm:nowISO(),origem:P?'contas a pagar':'contas a receber'});}
 
+export const BANCOS=['Banco do Brasil','Bradesco','Caixa Econômica Federal','Itaú Unibanco','Santander','Sicoob','Sicredi','Nubank','Banco Inter','C6 Bank','BTG Pactual','Safra','Banrisul','Banco da Amazônia','Banco do Nordeste','Banco Original','PagBank (PagSeguro)','Mercado Pago','Stone','Cora','Outro'];
+export function seedEmpty(){return {v:1,empresa:{nome:'Agropecuária JF',cidade:'Lagoa da Confusão – TO',telefone:'(63) 99224-6855',instagram:'@casadecarnes_jf',atividades:'Casa de carnes e compra e venda de gado'},
+  users:[],
+  contas:[{id:'caixa',nome:'Caixa físico',tipo:'Caixa',banco:'',agencia:'',numero:'',saldoInicial:0}],
+  lanc:[],compras:[],vendas:[],pagar:[],receber:[],fornecedores:[],fechamentos:[],log:[]};}
 export function seed(){let s=11;const rnd=()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
   const R=(a,b)=>r2(a+rnd()*(b-a));const L=[],compras=[],vendas=[];let n=0;
   const add=o=>L.push(Object.assign({id:'s'+(++n),usuario:n%3?'admin':'socio',origem:'manual',pessoa:'',criadoEm:o.data+'T09:00:00'},o));
@@ -90,11 +95,12 @@ export function seed(){let s=11;const rnd=()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.
     fechamentos:[],
     log:[{id:'g3',quando:'2026-11-03T14:22:00',usuario:'socio',acao:'Cadastrou',modulo:'Compra de Gado',detalhe:'Compra de 18 cab. – Fazenda Javaés'},{id:'g2',quando:'2026-11-01T09:10:00',usuario:'admin',acao:'Registrou pagamento',modulo:'Contas a Pagar',detalhe:'Tarifa do pacote de serviços · R$ 129,90'},{id:'g1',quando:'2026-10-28T16:05:00',usuario:'socio',acao:'Cadastrou',modulo:'Venda de Gado',detalhe:'Venda para Fazenda Santa Rita'}]};
   d.compras.forEach(c=>syncCompra(d,c));d.vendas.forEach(v=>syncVenda(d,v));return d;}
-export function save(d){try{localStorage.setItem(NS,JSON.stringify(d));}catch(e){}}
-export function loadBks(){try{return JSON.parse(localStorage.getItem(BK)||'[]');}catch(e){return [];}}
-export function initState(){let data=null;try{data=JSON.parse(localStorage.getItem(NS)||'null');}catch(e){}const fresh=!data||data.v!==1;if(fresh)data=seed();let user=null;try{user=localStorage.getItem(SESS);}catch(e){}if(user&&!data.users.find(u=>u.id===user))user=null;
+export function save(d){if(typeof window!=='undefined'&&window.__jfSave)window.__jfSave(d);}
+export function loadBks(){return [];}
+export function emptyData(){return Object.assign(seedEmpty(),{users:[]});}
+export function initState(data,user){const fresh=false;if(!data)data=emptyData();if(user&&!data.users.find(u=>u.id===user))user=null;
   const tm=TODAY.slice(0,7);const mes=+TODAY.slice(8)<10?mShift(tm,-1):tm;
-  return {data,fresh,user,page:'dashboard',mes,tab:{},sel:-1,q:'',form:null,confirm:null,toast:'',narrow:false,menu:false,lEmail:'admin@agropecuariajf.com.br',lSenha:'',lErr:'',contaSel:'bb',dreTab:'Consolidado',drePer:'Mês selecionado',rep:1,repDe:TODAY.slice(0,4)+'-01-01',repAte:TODAY,imp:null,impConta:'bb',bkv:0};}
+  return {data,fresh,user,page:'dashboard',mes,tab:{},sel:-1,q:'',form:null,confirm:null,toast:'',narrow:false,menu:false,lEmail:'',lSenha:'',lErr:'',contaSel:'caixa',sync:'idle',dreTab:'Consolidado',drePer:'Mês selecionado',rep:1,repDe:TODAY.slice(0,4)+'-01-01',repAte:TODAY,imp:null,impConta:'',bkv:0};}
 export function guess(desc,tipo){const t=norm(desc);const rules=[[/tarifa|pacote|iof|taxa/,'Taxas bancárias','geral'],[/energisa|energia|saneatins|agua/,'Energia e água','carnes'],[/frigorif|carcaca|granja|acougue/,'Compra de mercadorias','carnes'],[/aluguel/,'Aluguel','carnes'],[/salario|folha/,'Salários','carnes'],[/simples|darf|imposto|icms/,'Impostos','carnes'],[/posto|combust|diesel/,'Combustível','gado'],[/frete|transport|comiss/,'Frete e comissões','gado'],[/gado|bezerro|novilh|boi /,tipo==='entrada'?'Venda de gado':'Compra de gado','gado']];
   for(const [re,cat,at] of rules)if(re.test(t)&&(tipo==='entrada')===CAT_E.includes(cat))return {categoria:cat,atividade:at};
   return tipo==='entrada'?{categoria:/pix|venda|cartao|rede|cielo|stone/.test(t)?'Vendas casa de carnes':'Outras receitas',atividade:'carnes'}:{categoria:'Outras despesas',atividade:'geral'};}

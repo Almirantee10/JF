@@ -6,7 +6,6 @@ import gsap from "gsap";
 import { SplitText } from "gsap/SplitText";
 import { useGSAP } from "@gsap/react";
 import { useApp } from "@/store/AppStore";
-import { SESS, hash, norm, nowISO } from "@/lib/core";
 import { Button, Input } from "@/components/ui";
 
 gsap.registerPlugin(SplitText);
@@ -48,21 +47,28 @@ export default function Login() {
     { dependencies: [state.lErr] },
   );
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const u = data.users.find((x: any) => norm(x.email) === norm(state.lEmail));
-    if (!u || u.senha !== hash(state.lSenha)) return ctl.setState({ lErr: "E-mail ou senha incorretos." });
+    if (state.lBusy) return;
+    ctl.setState({ lBusy: true, lErr: "" });
     try {
-      localStorage.setItem(SESS, u.id);
-    } catch {}
-    ctl.setState({ user: u.id, lSenha: "" }, () =>
-      ctl.mut((dd: any) => {
-        dd.users.find((x: any) => x.id === u.id).ultimoAcesso = nowISO();
-      }, "Entrou no sistema", "Acesso", ""),
-    );
-    router.replace("/dashboard");
+      const r = await fetch("/api/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ login: state.lEmail, senha: state.lSenha }),
+      });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        return ctl.setState({ lBusy: false, lErr: j.error || "Não foi possível entrar." });
+      }
+      const ok = await ctl.reload();
+      ctl.setState({ lBusy: false, lSenha: "" });
+      if (ok) router.replace("/dashboard");
+      else ctl.setState({ lErr: "Não foi possível carregar os dados. Tente de novo." });
+    } catch {
+      ctl.setState({ lBusy: false, lErr: "Sem conexão com o servidor." });
+    }
   };
-  const fill = (email: string) => ctl.setState({ lEmail: email, lSenha: "jf2026", lErr: "" });
 
   return (
     <div ref={root} style={{ minHeight: "100vh", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,420px),1fr))", background: "#fff", overflow: "auto", height: "100vh" }}>
@@ -98,22 +104,11 @@ export default function Login() {
           <h2 style={{ margin: 0, font: "var(--type-h1)", color: "var(--text-strong)" }}>Entrar</h2>
           <div style={{ color: "var(--text-muted)" }}>Acesso restrito aos usuários cadastrados.</div>
         </div>
-        <Input label="E-mail" icon="mail" value={state.lEmail} onChange={(v) => ctl.setState({ lEmail: v, lErr: "" })} />
+        <Input label="Usuário" icon="user" placeholder="Digite seu usuário" value={state.lEmail} onChange={(v) => ctl.setState({ lEmail: v, lErr: "" })} />
         <Input label="Senha" icon="lock" type="password" value={state.lSenha} error={state.lErr} onChange={(v) => ctl.setState({ lSenha: v, lErr: "" })} />
         <Button type="submit" size="lg" fullWidth>
-          Acessar sistema
+          {state.lBusy ? "Entrando…" : "Acessar sistema"}
         </Button>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px", background: "var(--surface-brand-soft)", border: "1px solid var(--jf-green-100)", borderRadius: "var(--radius-md)", font: "var(--type-caption)" }}>
-          <strong style={{ color: "var(--text-brand)" }}>Acesso de demonstração (senha: jf2026)</strong>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            <Button variant="outline" size="sm" icon="shield" onClick={() => fill("admin@agropecuariajf.com.br")}>
-              Administrador
-            </Button>
-            <Button variant="outline" size="sm" icon="user" onClick={() => fill("socio@agropecuariajf.com.br")}>
-              Sócio
-            </Button>
-          </div>
-        </div>
       </form>
     </div>
   );

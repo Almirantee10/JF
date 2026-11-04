@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useApp } from "@/store/AppStore";
-import { PAGES, MES_PAGES, SESS, monthsBetween, mL, TODAY } from "@/lib/core";
+import { PAGES, MES_PAGES, monthsBetween, mL, TODAY } from "@/lib/core";
 import { Icon, IconButton, Select } from "@/components/ui";
 import { Splash } from "@/components/Splash";
 import { FormModal, ConfirmModal, Toast } from "@/components/Modals";
@@ -55,7 +55,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (!me) return <Splash />;
 
   const title = (PAGES.find((p: any) => p[0] === page) || [])[1] || "";
-  const first_ = data.lanc.reduce((a: string, l: any) => (l.data < a ? l.data : a), TODAY).slice(0, 7);
+  const first0 = data.lanc.reduce((a: string, l: any) => (l.data < a ? l.data : a), TODAY).slice(0, 7);
+  const first_ = state.mes < first0 ? state.mes : first0;
   const mesOptions = monthsBetween(first_, TODAY.slice(0, 7))
     .reverse()
     .map((x: string) => ({ value: x, label: mL(x) }));
@@ -69,12 +70,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const logout = (e: React.MouseEvent) => {
     e.preventDefault();
-    ctl.mut(() => {}, "Saiu do sistema", "Acesso", "");
-    try {
-      localStorage.removeItem(SESS);
-    } catch {}
-    ctl.setState({ user: null });
-    router.replace("/login");
+    ctl.logout().then(() => router.replace("/login"));
   };
 
   return (
@@ -125,7 +121,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               zIndex: 0,
             }}
           />
-          {PAGES.map(([k, l, i]: string[]) => (
+          {PAGES.filter((p: string[]) => p[0] !== "usuarios" || me.perfil === "Administrador").map(([k, l, i]: string[]) => (
             <button key={k} className={"nav-btn" + (k === page ? " is-active" : "")} onClick={() => ctl.go(k)}>
               <Icon name={i} size={18} className="nav-ico" />
               <span>{l}</span>
@@ -163,6 +159,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
           )}
+          <span title="Os dados ficam na nuvem" style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "var(--type-caption)", color: state.sync === "error" ? "var(--status-danger)" : "var(--text-muted)" }}>
+            <Icon name={state.sync === "error" ? "triangle-alert" : "database-backup"} size={15} />
+            {state.sync === "saving" ? "Salvando…" : state.sync === "error" ? "Não salvo" : "Salvo na nuvem"}
+          </span>
           <div style={{ display: "flex", alignItems: "center", gap: 10, paddingLeft: 12, borderLeft: "1px solid var(--border-default)" }}>
             <span style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--jf-navy-700)", color: "#fff", display: "grid", placeItems: "center", font: "700 13px var(--font-sans)" }}>
               {initials}

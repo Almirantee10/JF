@@ -36,7 +36,7 @@ function FormModalInner() {
   const { state, ctl, data } = useApp();
   const form = state.form;
   const def = ctl.formDef(form, data);
-  const { overlay, panel, close } = useDialog(() => ctl.setState({ form: null }));
+  const { overlay, panel, close } = useDialog(() => ctl.closeForm());
   const err = useRef<HTMLDivElement>(null);
   useGSAP(
     () => {
@@ -67,7 +67,18 @@ function FormModalInner() {
             return (
               <div key={f.key} style={{ gridColumn: f.full ? "1 / -1" : "auto", minWidth: 0 }}>
                 {f.kind === "select" ? (
-                  <Select label={f.label} options={f.options || []} value={value} onChange={(x) => ctl.setField(f.key, x)} />
+                  <>
+                    <Select label={f.label} options={f.options || []} value={value} onChange={(x) => ctl.setField(f.key, x)} />
+                    {(f.key === "conta" || f.key === "destino") && form.type !== "conta" && (
+                      <button
+                        type="button"
+                        onClick={() => ctl.openNested(f.key)}
+                        style={{ marginTop: 6, border: 0, background: "transparent", color: "var(--text-link)", font: "600 12px var(--font-sans)", cursor: "pointer", padding: 0 }}
+                      >
+                        + Cadastrar banco
+                      </button>
+                    )}
+                  </>
                 ) : (
                   <Input label={f.label} type={f.kind} value={value} onChange={(x) => ctl.setField(f.key, x)} hint={f.hint || ""} placeholder={f.kind === "number" ? "0,00" : ""} />
                 )}

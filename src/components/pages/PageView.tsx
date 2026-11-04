@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useApp } from "@/store/AppStore";
@@ -238,34 +238,58 @@ const require_saldo = () => ({ saldo: CORE.saldo });
 
 /* --------------------------------------------------------------- Usuários */
 function Usuarios() {
-  const { state, ctl, data } = useApp();
+  const { state, ctl, data, me } = useApp();
+  const admin = me?.perfil === "Administrador";
   return (
-    <div style={grid(380)}>
-      {data.users.map((u: any) => (
-        <Card key={u.id}>
-          <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-            <span style={{ width: 52, height: 52, flex: "none", borderRadius: "50%", background: "var(--jf-navy-700)", color: "#fff", display: "grid", placeItems: "center", font: "700 18px var(--font-sans)" }}>{u.nome.slice(0, 2).toUpperCase()}</span>
-            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ font: "var(--type-h2)", color: "var(--text-strong)" }}>{u.nome}</span>
-                <Badge tone={u.perfil === "Administrador" ? "info" : "brand"}>{u.perfil}</Badge>
-                {u.id === state.user && <Badge tone="success" dot>Conectado</Badge>}
-              </div>
-              <span style={{ color: "var(--text-muted)" }}>{u.email}</span>
-              <span style={{ font: "var(--type-caption)" }}>Acesso completo: receitas e despesas, edição e exclusão, relatórios{u.perfil === "Administrador" ? ", contas bancárias e administração do sistema" : " e demais funcionalidades"}.</span>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", font: "var(--type-caption)", color: "var(--text-muted)" }}>
-                <span>Último acesso: {u.ultimoAcesso ? dtBR(u.ultimoAcesso) : "—"}</span>
-                <span>{act(data).filter((l: any) => l.usuario === u.id).length} lançamentos</span>
-                <span>{data.log.filter((l: any) => l.usuario === u.id).length} alterações registradas</span>
-              </div>
-              <div style={{ marginTop: 6 }}>
-                <Button variant="outline" size="sm" icon="key-round" onClick={() => ctl.openForm("senha", u)}>Alterar senha</Button>
+    <>
+      <div data-reveal style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ color: "var(--text-muted)" }}>Crie acessos para sócios e funcionários. Cada pessoa entra com o próprio login e senha.</span>
+        {admin && (
+          <Button icon="plus" onClick={() => ctl.openForm("usuario")}>
+            Novo acesso
+          </Button>
+        )}
+      </div>
+      <div style={grid(380)}>
+        {data.users.map((u: any) => (
+          <Card key={u.id}>
+            <div style={{ display: "flex", gap: 16, alignItems: "flex-start", opacity: u.ativo === false ? 0.6 : 1 }}>
+              <span style={{ width: 52, height: 52, flex: "none", borderRadius: "50%", background: "var(--jf-navy-700)", color: "#fff", display: "grid", placeItems: "center", font: "700 18px var(--font-sans)" }}>{u.nome.slice(0, 2).toUpperCase()}</span>
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ font: "var(--type-h2)", color: "var(--text-strong)" }}>{u.nome}</span>
+                  <Badge tone={u.perfil === "Administrador" ? "info" : "brand"}>{u.perfil}</Badge>
+                  {u.id === state.user && <Badge tone="success" dot>Conectado</Badge>}
+                  {u.ativo === false && <Badge tone="danger">Desativado</Badge>}
+                </div>
+                <span style={{ color: "var(--text-muted)" }}>Login: {u.email}</span>
+                <span style={{ font: "var(--type-caption)" }}>
+                  {u.perfil === "Administrador"
+                    ? "Acesso completo, inclusive criar e desativar acessos."
+                    : "Acesso a lançamentos, resultados e relatórios. Não gerencia acessos."}
+                </span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", font: "var(--type-caption)", color: "var(--text-muted)" }}>
+                  <span>Último acesso: {u.ultimoAcesso ? dtBR(u.ultimoAcesso) : "—"}</span>
+                  <span>{act(data).filter((l: any) => l.usuario === u.id).length} lançamentos</span>
+                  <span>{data.log.filter((l: any) => l.usuario === u.id).length} alterações registradas</span>
+                </div>
+                {admin && (
+                  <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    <Button variant="outline" size="sm" icon="pencil" onClick={() => ctl.openForm("usuario", u)}>Editar</Button>
+                    <Button variant="outline" size="sm" icon="key-round" onClick={() => ctl.openForm("senha", u)}>Alterar senha</Button>
+                    {u.id !== state.user && (
+                      <Button variant={u.ativo === false ? "outline" : "ghost"} size="sm" icon={u.ativo === false ? "rotate-ccw" : "lock"} onClick={() => ctl.toggleUser(u)}>
+                        {u.ativo === false ? "Reativar" : "Desativar"}
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        </Card>
-      ))}
-    </div>
+          </Card>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -389,10 +413,9 @@ function Importacao() {
         </Card>
         <Card title="Extrato Bancário" subtitle="OFX ou CSV do banco" icon="landmark">
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <Select label="Conta do extrato" options={contasOpt} value={state.impConta} onChange={(x) => ctl.setState({ impConta: x })} />
+            <Select label="Banco / conta do extrato" options={contasOpt} value={state.impConta || (contasOpt[0] && contasOpt[0].value) || ""} onChange={(x) => ctl.setState({ impConta: x })} />
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               <Button icon="upload" onClick={() => ctl.fileOfx.current?.click()}>Selecionar extrato</Button>
-              <Button variant="ghost" onClick={() => ctl.extratoExemplo()}>Usar extrato de exemplo</Button>
             </div>
           </div>
         </Card>
@@ -438,9 +461,33 @@ function Importacao() {
 
 /* ----------------------------------------------------------- Configurações */
 function Config() {
-  const { state, ctl, data } = useApp();
+  const { ctl, data, me } = useApp();
   const e = data.empresa;
-  const bks = loadBks();
+  const admin = me?.perfil === "Administrador";
+  const [days, setDays] = useState<string[]>([]);
+  useEffect(() => {
+    if (!admin) return;
+    fetch("/api/backups", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => setDays(j.days || []))
+      .catch(() => {});
+  }, [admin]);
+  const restoreDay = (day: string) =>
+    ctl.ask("Restaurar a cópia de " + dbr(day) + "?", "Os dados atuais serão substituídos por esta cópia. Os acessos de usuários continuam como estão.", async () => {
+      try {
+        const r = await fetch("/api/backups?d=" + day);
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error);
+        const dd = j.data;
+        dd.users = ctl.state.data.users;
+        ctl.setState({ data: dd });
+        save(dd);
+        ctl.mut(() => {}, "Restaurou cópia", "Configurações", "Cópia de " + dbr(day));
+        ctl.toast("Cópia restaurada.");
+      } catch {
+        ctl.toast("Não foi possível restaurar a cópia.");
+      }
+    }, "Restaurar");
   const lab: any = {
     lanc: (x: any) => x.descricao + " · " + brl(x.valor), compras: (x: any) => "Compra de gado – " + x.vendedor, vendas: (x: any) => "Venda de gado – " + x.comprador,
     pagar: (x: any) => "A pagar: " + x.fornecedor + " · " + x.descricao, receber: (x: any) => "A receber: " + x.cliente + " · " + x.descricao,
@@ -462,18 +509,19 @@ function Config() {
           <div><Button variant="outline" size="sm" icon="pencil" onClick={() => ctl.openForm("empresa")}>Editar dados</Button></div>
         </div>
       </Card>
-      <Card title="Backup e Recuperação" subtitle="Cópia automática diária neste dispositivo (últimos 7 dias)" icon="database-backup">
+      <Card title="Backup e Recuperação" subtitle="Os dados ficam na nuvem. Uma cópia por dia é guardada (últimos 7 dias)." icon="database-backup">
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             <Button icon="download" onClick={() => { ctl.dl(new Blob([JSON.stringify(data, null, 1)], { type: "application/json" }), "backup-agropecuaria-jf-" + TODAY + ".json"); ctl.mut(() => {}, "Baixou backup", "Configurações", ""); }}>Baixar backup</Button>
-            <Button variant="outline" icon="upload" onClick={() => ctl.fileBk.current?.click()}>Restaurar de arquivo</Button>
+            {admin && <Button variant="outline" icon="upload" onClick={() => ctl.fileBk.current?.click()}>Restaurar de arquivo</Button>}
           </div>
           <input type="file" ref={ctl.fileBk as any} accept=".json" onChange={(ev) => ctl.onFile(ev, "bk")} style={{ display: "none" }} />
-          {bks.map((b: any) => (
-            <div key={b.data} style={rowStyle}>
+          {admin && days.length === 0 && <div style={{ color: "var(--text-muted)", font: "var(--type-caption)" }}>As cópias diárias aparecem aqui depois do primeiro dia de uso.</div>}
+          {admin && days.map((day) => (
+            <div key={day} style={rowStyle}>
               <Icon name="archive" size={18} color="var(--text-muted)" />
-              <span style={{ flex: 1 }}>{"Backup automático de " + dbr(b.data) + " · " + nf(b.json.length / 1024) + " KB"}</span>
-              <Button variant="ghost" size="sm" onClick={() => ctl.ask("Restaurar backup de " + dbr(b.data) + "?", "Os dados atuais serão substituídos por esta cópia.", () => { const dd = JSON.parse(b.json); ctl.setState({ data: dd }); save(dd); ctl.mut(() => {}, "Restaurou backup", "Configurações", "Backup de " + dbr(b.data)); ctl.toast("Backup restaurado."); }, "Restaurar")}>Restaurar</Button>
+              <span style={{ flex: 1 }}>{"Cópia automática de " + dbr(day)}</span>
+              <Button variant="ghost" size="sm" onClick={() => restoreDay(day)}>Restaurar</Button>
             </div>
           ))}
         </div>
@@ -492,13 +540,9 @@ function Config() {
           ))}
         </div>
       </Card>
-      <Card title="Dados de Demonstração" icon="flask-conical">
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <p style={{ margin: 0 }}>Este protótipo guarda as informações no navegador. A versão publicada usará banco de dados em nuvem com backup no servidor.</p>
-          <div><Button variant="danger" size="sm" icon="refresh-cw" onClick={() => ctl.ask("Restaurar dados de exemplo?", "Todos os lançamentos atuais serão substituídos pelos dados de demonstração.", () => { const dd = seed(); save(dd); ctl.setState({ data: dd, sel: -1 }); ctl.toast("Dados de exemplo restaurados."); }, "Restaurar", "danger")}>Restaurar dados de exemplo</Button></div>
-        </div>
-      </Card>
     </div>
   );
 }
 void nowISO;
+void loadBks;
+void seed;
