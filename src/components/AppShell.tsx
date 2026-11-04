@@ -139,8 +139,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           style={{
             minHeight: "var(--topbar-h)",
             flex: "none",
-            background: "#fff",
-            borderBottom: "1px solid var(--border-default)",
+            // No celular o topo fica verde (marca da empresa) em vez de branco.
+            background: narrow ? "linear-gradient(135deg, var(--jf-green-900), var(--jf-green-700))" : "#fff",
+            borderBottom: narrow ? "0" : "1px solid var(--border-default)",
+            boxShadow: narrow ? "0 4px 14px rgba(6,51,26,.25)" : "none",
             display: "flex",
             alignItems: "center",
             gap: 12,
@@ -149,27 +151,27 @@ export function AppShell({ children }: { children: ReactNode }) {
             zIndex: 2,
           }}
         >
-          {narrow && <IconButton icon="menu" label="Menu" size={40} onClick={() => ctl.setState({ menu: true })} />}
-          <PageTitle text={title} />
+          {narrow && <IconButton icon="menu" label="Menu" size={40} onBrand onClick={() => ctl.setState({ menu: true })} />}
+          <PageTitle text={title} light={narrow} />
           {MES_PAGES.includes(page) && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ font: "var(--type-label)", color: "var(--text-muted)" }}>Período</span>
+              <span style={{ font: "var(--type-label)", color: narrow ? "var(--jf-green-100)" : "var(--text-muted)" }}>Período</span>
               <div style={{ width: 180 }}>
                 <Select options={mesOptions} value={state.mes} onChange={(x) => ctl.setState({ mes: x, sel: -1 })} />
               </div>
             </div>
           )}
-          <span title="Os dados ficam na nuvem" style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "var(--type-caption)", color: state.sync === "error" ? "var(--status-danger)" : "var(--text-muted)" }}>
+          <span title="Os dados ficam na nuvem" style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "var(--type-caption)", color: state.sync === "error" ? (narrow ? "#ffd0d0" : "var(--status-danger)") : narrow ? "var(--jf-green-100)" : "var(--text-muted)" }}>
             <Icon name={state.sync === "error" ? "triangle-alert" : "database-backup"} size={15} />
             {state.sync === "saving" ? "Salvando…" : state.sync === "error" ? "Não salvo" : "Salvo na nuvem"}
           </span>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, paddingLeft: 12, borderLeft: "1px solid var(--border-default)" }}>
-            <span style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--jf-navy-700)", color: "#fff", display: "grid", placeItems: "center", font: "700 13px var(--font-sans)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, paddingLeft: 12, borderLeft: narrow ? "1px solid rgba(255,255,255,.25)" : "1px solid var(--border-default)" }}>
+            <span style={{ width: 34, height: 34, borderRadius: "50%", background: narrow ? "#fff" : "var(--jf-navy-700)", color: narrow ? "var(--jf-green-900)" : "#fff", display: "grid", placeItems: "center", font: "700 13px var(--font-sans)" }}>
               {initials}
             </span>
             <div style={{ font: "var(--type-caption)" }}>
-              <div style={{ fontWeight: 600, color: "var(--text-strong)" }}>{me.nome}</div>
-              <a href="#" onClick={logout}>
+              <div style={{ fontWeight: 600, color: narrow ? "#fff" : "var(--text-strong)" }}>{me.nome}</div>
+              <a href="#" onClick={logout} style={narrow ? { color: "var(--jf-green-300)" } : undefined}>
                 Sair
               </a>
             </div>
@@ -187,7 +189,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
-function PageTitle({ text }: { text: string }) {
+function PageTitle({ text, light }: { text: string; light?: boolean }) {
   const ref = useRef<HTMLHeadingElement>(null);
   useGSAP(
     () => {
@@ -196,7 +198,7 @@ function PageTitle({ text }: { text: string }) {
     { dependencies: [text] },
   );
   return (
-    <h1 ref={ref} style={{ margin: 0, font: "var(--type-h1)", fontSize: 26, color: "var(--text-strong)", flex: 1, minWidth: 160 }}>
+    <h1 ref={ref} style={{ margin: 0, font: "var(--type-h1)", fontSize: 26, color: light ? "#fff" : "var(--text-strong)", flex: 1, minWidth: 160 }}>
       {text}
     </h1>
   );
